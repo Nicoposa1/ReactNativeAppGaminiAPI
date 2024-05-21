@@ -1,9 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, {useState, useRef} from 'react';
 import {
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
+  Platform,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -11,8 +13,8 @@ import {
   View,
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
-import { ChatService } from '../Services/ChatService';
-import { Input } from '../component/input';
+import {ChatService} from '../Services/ChatService';
+import {Input} from '../component/input';
 
 export const HomeScreen = () => {
   const [message, setMessage] = useState('');
@@ -23,24 +25,23 @@ export const HomeScreen = () => {
 
   const handleSend = async () => {
     if (!message) return;
-
+    setMessage('');
     setIsLoading(true);
 
     try {
       const response = await ChatService(message);
       setMessages(prevMessages => [
         ...prevMessages,
-        { text: message, isUser: true },
-        { text: response, isUser: false },
+        {text: message, isUser: true},
+        {text: response, isUser: false},
       ]);
 
-      flatListRef.current.scrollToEnd({ animated: true });
+      ScrollView.current.scrollToEnd({animated: true});
     } catch (error) {
       console.error('Error:', error);
     } finally {
       setIsLoading(false);
     }
-    setMessage('');
   };
 
   return (
@@ -48,65 +49,69 @@ export const HomeScreen = () => {
       onPress={() => {
         Keyboard.dismiss();
       }}>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : null}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 100}>
-        <SafeAreaView style={styles.container}>
-          <View style={styles.contentContainer}>
-            <FlatList
-              ref={flatListRef}
-              data={messages}
-              renderItem={({ item }) => (
-                <View
-                  style={[
-                    styles.messageContainer,
-                    item.isUser ? styles.userMessageContainer : styles.geminiMessageContainer,
-                  ]}>
-                  <Text style={styles.messageText}>
-                    <Markdown>{item.text}</Markdown>
-                  </Text>
-                </View>
-              )}
-              keyExtractor={(item, index) => index.toString()}
-              onContentSizeChange={() => flatListRef.current.scrollToEnd()}
+      <>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'flex-end',
+            padding: 10,
+            backgroundColor: '#f0f0f0',
+          }}>
+            <ScrollView>
+
+          {messages.map((msg, index) => (
+            <Text
+              key={index}
+              style={[
+                styles.message,
+                msg.isUser ? styles.userMessage : styles.geminiMessage,
+              ]}>
+              <Markdown>{msg.text}</Markdown>
+            </Text>
+          ))}
+            </ScrollView>
+        </View>
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : null}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 100}>
+          <SafeAreaView style={styles.container}>
+            <Input
+              onSubmit={handleSend}
+              setInput={setMessage}
+              input={message}
             />
-          </View>
-          <Input
-            onSubmit={handleSend}
-            setInput={setMessage}
-            input={message}
-          />
-        </SafeAreaView>
-      </KeyboardAvoidingView>
+          </SafeAreaView>
+        </KeyboardAvoidingView>
+      </>
     </TouchableWithoutFeedback>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    height: 100,
     backgroundColor: '#fff',
   },
   contentContainer: {
-    flex: 1,
     paddingBottom: 10,
   },
-  messageContainer: {
+  message: {
     padding: 10,
     borderRadius: 5,
     marginBottom: 5,
-    maxWidth: '80%', // Limita el ancho del mensaje
   },
-  messageText: {
-  },
-  userMessageContainer: {
-    backgroundColor: '#e0e0e0',
+  userMessage: {
     alignSelf: 'flex-end',
   },
-  geminiMessageContainer: {
-    backgroundColor: '#007bff',
+  geminiMessage: {
     color: '#fff',
     alignSelf: 'flex-start',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: 'gray',
+    padding: 10,
+    maxHeight: 150,
   },
 });
