@@ -1,21 +1,25 @@
+import React, { useState, useRef } from 'react';
 import {
-  Button,
-  ScrollView,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import React, {useRef, useState} from 'react';
 import Markdown from 'react-native-markdown-display';
 import { ChatService } from '../Services/ChatService';
+import { Input } from '../component/input';
 
 export const HomeScreen = () => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const scrollViewRef = useRef();
+  const flatListRef = useRef();
 
   const handleSend = async () => {
     if (!message) return;
@@ -26,17 +30,13 @@ export const HomeScreen = () => {
       const response = await ChatService(message);
       setMessages(prevMessages => [
         ...prevMessages,
-        {text: message, isUser: true},
+        { text: message, isUser: true },
+        { text: response, isUser: false },
       ]);
 
-      setMessages(prevMessages => [
-        ...prevMessages,
-        {text: response, isUser: false},
-      ]);
-
-      scrollViewRef.current.scrollToEnd();
+      flatListRef.current.scrollToEnd({ animated: true });
     } catch (error) {
-      console.error('entro aca Error:', error);
+      console.error('Error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -44,63 +44,69 @@ export const HomeScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        style={styles.messagesList}
-        ref={scrollViewRef}
-        onContentSizeChange={() => scrollViewRef.current.scrollToEnd()}>
-        {messages.map((msg, index) => (
-          <Text
-            key={index}
-            style={[
-              styles.message,
-              msg.isUser ? styles.userMessage : styles.geminiMessage,
-            ]}>
-            <Markdown>{msg.text}</Markdown>
-          </Text>
-        ))}
-        {isLoading && <Text>Loading...</Text>}
-      </ScrollView>
-      <TextInput
-        style={styles.input}
-        value={message}
-        onChangeText={setMessage}
-        placeholder="Type a message"
-        multiline
-      />
-      <Button title="Send" onPress={handleSend} />
-    </View>
+    <TouchableWithoutFeedback
+      onPress={() => {
+        Keyboard.dismiss();
+      }}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : null}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 100}>
+        <SafeAreaView style={styles.container}>
+          <View style={styles.contentContainer}>
+            <FlatList
+              ref={flatListRef}
+              data={messages}
+              renderItem={({ item }) => (
+                <View
+                  style={[
+                    styles.messageContainer,
+                    item.isUser ? styles.userMessageContainer : styles.geminiMessageContainer,
+                  ]}>
+                  <Text style={styles.messageText}>
+                    <Markdown>{item.text}</Markdown>
+                  </Text>
+                </View>
+              )}
+              keyExtractor={(item, index) => index.toString()}
+              onContentSizeChange={() => flatListRef.current.scrollToEnd()}
+            />
+          </View>
+          <Input
+            onSubmit={handleSend}
+            setInput={setMessage}
+            input={message}
+          />
+        </SafeAreaView>
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    backgroundColor: '#fff',
   },
-  messagesList: {
+  contentContainer: {
     flex: 1,
-    marginBottom: 10,
+    paddingBottom: 10,
   },
-  message: {
+  messageContainer: {
     padding: 10,
     borderRadius: 5,
     marginBottom: 5,
+    maxWidth: '80%', // Limita el ancho del mensaje
   },
-  userMessage: {
+  messageText: {
+  },
+  userMessageContainer: {
     backgroundColor: '#e0e0e0',
     alignSelf: 'flex-end',
   },
-  geminiMessage: {
+  geminiMessageContainer: {
     backgroundColor: '#007bff',
     color: '#fff',
     alignSelf: 'flex-start',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: 'gray',
-    padding: 10,
-    marginBottom: 10,
-    maxHeight: 150,
   },
 });
